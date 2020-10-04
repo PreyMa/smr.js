@@ -1,0 +1,101 @@
+m-math {
+  display: inline-block;
+  font-size: 3rem;
+  font-family: serif;
+}
+
+m-math * {
+  display: inline-block;
+  line-height: 0.8;
+  font-size: inherit;
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+}
+
+m-math m-spacer[r="1"] { grid-row: 1; min-height: 0.5em; }
+m-math m-spacer[r="2"] { grid-row: 2; }
+
+m-math m-expr {
+  display: grid;
+  grid-template-rows: auto auto;
+  position: relative;
+}
+
+m-math m-op, m-math m-var, m-nm {
+  grid-row: 2;
+  height: 0.6em;
+}
+
+m-math m-op > span, m-math m-var > span, m-math m-nm > span {
+  position: relative;
+  top: -0.4em;
+}
+
+m-math m-op {
+  padding: 0 0.1em;
+}
+
+m-math m-op + m-par {
+  padding: 0;
+}
+
+m-math m-nm {
+}
+
+m-math m-var {
+  font-style: italic;
+}
+
+m-math m-ubnd > m-expr {
+  margin-bottom: 0.3em;
+}
+
+m-math m-sup, m-math m-sub, m-math m-lbnd, m-math m-ubnd {
+  font-size: 80%;
+}
+
+m-math m-sup, m-math m-ubnd {
+  grid-row: 1;
+}
+
+m-math m-sub, m-math m-lbnd {
+  grid-row: 2;
+}
+
+m-math m-num, m-math m-denom {
+  text-align: center;
+  grid-row: 2;
+  font-size: 70%;
+}
+
+m-math m-num, m-math m-sup, m-math m-lbnd {
+  display: flex;
+}
+
+m-math m-num > div, m-math m-sup > div, m-math m-lbnd > div {
+  align-self: flex-end;
+}
+
+m-math m-num {
+  grid-row: 1;
+  border-bottom: solid 1px black;
+}
+
+m-math m-par {
+  grid-row: 1/3;
+}
+
+m-math m-par > div {
+  transform-origin: top;
+}
+
+m-math m-sum {
+  grid-row: 1/3;
+  display: flex;
+}
+
+m-math m-sum > div {
+  align-self: center;
+  line-height: 1;
+}
