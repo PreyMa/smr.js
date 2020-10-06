@@ -12,12 +12,12 @@
     }
   }
 
-
-  let config= window.smrConfig || {};
-  Object.assign( config, {
+  // Setup defaults
+  let config= Object.assign({
     docLoaded: function( c ) { document.addEventListener('DOMContentLoaded', c); },
     rootElement: document
-  });
+  }, window.smrConfig || {} );
+  window.smrConfig= config;
 
   config.docLoaded( function() {
     // For each meth instance
