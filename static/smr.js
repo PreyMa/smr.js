@@ -1,17 +1,5 @@
 (function() {
 
-  function forEachChild( e, fn, idx= 0 ) {
-  	if( !(e instanceof HTMLElement) ) {
-    	return;
-    }
-
-  	const cs= e.children;
-    for( let i= idx; i!= cs.length; i++ ) {
-      const c= cs.item( i );
-      fn( c, i, cs );
-    }
-  }
-
   // Setup defaults
   let config= Object.assign({
     docLoaded: function( c ) { document.addEventListener('DOMContentLoaded', c); },
@@ -20,7 +8,7 @@
   window.smrConfig= config;
 
   config.docLoaded( function() {
-    // For each meth instance
+    // For each math instance
     const maths= config.rootElement.querySelectorAll('m-math');
     maths.forEach( m => {
 
