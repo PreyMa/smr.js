@@ -151,6 +151,18 @@
       }
     }
 
+    /*
+    * Parsing ASCII math based on this definition: http://asciimath.org/
+    *
+    *  v ::= [A-Za-z] | greek letters | numbers | other constant symbols
+    *  u ::= sqrt | text | bb | other unary symbols for font commands
+    *  b ::= frac | root | stackrel | other binary symbols
+    *  l ::= ( | [ | { | (: | {: | other left brackets
+    *  r ::= ) | ] | } | :) | :} | other right brackets
+    *  S ::= v | lEr | uS | bSS             Simple expression
+    *  I ::= S_S | S^S | S_S^S | S          Intermediate expression
+    *  E ::= IE | I/I                       Expression
+    */
 
     /*
     *
@@ -158,6 +170,14 @@
     */
     class MathElement {
       constructor() {}
+
+      wrapArg( a ) {
+        if( !a || a instanceof MathExpression ) {
+          return a;
+        }
+
+        return new MathExpression( a );
+      }
 
       isSym( symbol ) { return false; }
 
@@ -258,14 +278,14 @@
           } else if( cur.isUnary() ) {
             it.next();
             const arg= this.loadSimpleExp( it );
-            return new MathUnaryCommand( it, cur, arg );
+            return MathUnaryCommand.create( cur, arg );
 
           // bSS
           } else if( cur.isBinary() ) {
             it.next();
             const arg1= this.loadSimpleExp( it );
             const arg2= this.loadSimpleExp( it );
-            return new MathBinaryCommand( it, cur, arg1, arg2 );
+            return MathBinaryCommand.create( cur, arg1, arg2 );
           }
         }
 
@@ -341,30 +361,49 @@
     class MathUnaryCommand extends MathSymbol {
       constructor( msym, arg ) {
         super( msym.sym );
-        this.argA= this.wrapArgument( arg );
+        this.argA= this.wrapArg( arg );
       }
 
-      wrapArgument( a, def ) {
-        if( !a || a instanceof MathExpression ) {
-          return a;
-        }
+      static create( msym, arg ) {
+        const Symbols= Renderer.defs.symbolTable;
 
-        return new MathExpression( a );
-      }
+        // Create special unary command element
+        if( msym.sym === Symbols.sqrt ) {
+          return new MathRoot( null, arg );
+        } // else if text, bb, etc.
 
-      static create() {
-        // return sqrt
+        // Create generic element
+        return new MathUnaryCommand( msym, arg );
       }
     }
 
     class MathBinaryCommand extends MathUnaryCommand {
-      constructor( msym, argA, argB ) {
+      constructor( msym, argA, argB, wrapB= true ) {
         super( msym, argA );
-        this.argB= this.wrapArgument( argB );;
+
+        this.argB= wrapB ? this.wrapArg( argB ) : argB;
       }
 
-      static create() {
-        // return root, fraction
+      static create( msym, argA, argB ) {
+        const Symbols= Renderer.defs.symbolTable;
+
+        // Create special binary command element
+        if( msym.sym === Symbols.root ) {
+          return new MathRoot( argA, argB );
+
+        } else if( msym.sym === Symbols.frac ) {
+          return new MathFraction( argA, argB );
+        }
+
+        // Create generic element
+        return new MathBinaryCommand( msym, argA, argB );
+      }
+    }
+
+    class MathRoot extends MathBinaryCommand {
+      constructor( exponent, radicand ) {
+        // Don't wrap the radicand
+        super( Renderer.defs.symbolTable.root, exponent, radicand, false );
       }
     }
 
@@ -395,16 +434,16 @@
       constructor( e, sub, sup ) {
         super();
         this.exp= e;
-        this.sub= sub;
-        this.sup= sup;
+        this.sub= this.wrapArg(sub);
+        this.sup= this.wrapArg(sup);
       }
     }
 
     class MathFraction extends MathElement {
       constructor( num, denom ) {
         super();
-        this.num= num;
-        this.denom= denom;
+        this.num=   this.wrapArg(num);
+        this.denom= this.wrapArg(denom);
       }
     }
 
