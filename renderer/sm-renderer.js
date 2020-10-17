@@ -193,9 +193,9 @@
 
       isParClose() { return this.sym.exp === Renderer.ParType.Close; }
 
-      isUnary() { return this.sym.unary; }
+      isUnary() { return this.sym.cmd === Renderer.CmdType.Unary; }
 
-      isBinary() { return this.sym.binary; }
+      isBinary() { return this.sym.cmd === Renderer.CmdType.Binary; }
 
       printBody() {
         // Called by parent
@@ -284,14 +284,14 @@
 
         // Try to load sub
         let s= it.get();
-        if( s.isSym( Syms.sub ) ) {
+        if( s && s.isSym( Syms.sub ) ) {
           it.next();
           sub= this.loadSimpleExp( it );
         }
 
         // Try to load sup
         s= it.get();
-        if( s.isSym( Syms.sup ) ) {
+        if( s && s.isSym( Syms.sup ) ) {
           it.next();
           sup= this.loadSimpleExp( it );
         }
@@ -428,19 +428,21 @@
       }
 
       static initSymbolTable() {
-        // Create table of name to object
         const symbols= Renderer.defs.symbols;
+
+        // Set default flags
+        symbols.forEach( (s, i) => {
+          symbols[i]= Object.assign({
+            exp: Renderer.ParType.None,
+            cmd: Renderer.CmdType.None
+          }, s);
+        });
+
+        // Create table of name to object
+        // After flags as assign replaces the obj
         const table=   Renderer.defs.symbolTable;
         symbols.forEach( s => table[s.name]= s );
 
-        // Set default symbol parenthesis type
-        symbols.forEach( s => s.exp= s.hasOwnProperty('exp') ? s.exp : Renderer.ParType.None );
-
-        // Set default symbol unary/binary props
-        symbols.forEach( s => {
-          s.unary||= false;
-          s.binary||= false;
-        });
 
         // Set symbol bracket links
         symbols.forEach( s => {
@@ -539,6 +541,11 @@
       Open:  1,
       Close: 2
     };
+    Renderer.CmdType= {
+      None: 0,
+      Unary: 1,
+      Binary: 2
+    };
 
     Renderer.defs= {
       symbols: [
@@ -572,11 +579,11 @@
 
         // Miscellaneous Symbols
         { name: 'fracDiv',   ascii: '/',    symbol: '/',  tex: null },
-        { name: 'frac',      ascii: null,   symbol: null, tex: ['frac'], binary: true },
+        { name: 'frac',      ascii: null,   symbol: null, tex: ['frac'], cmd: Renderer.CmdType.Binary },
         { name: 'sup',       ascii: '^',    symbol: null, tex: null },
         { name: 'sub',       ascii: null,   symbol: null, tex: '_' },
-        { name: 'sqrt',      ascii: null,   symbol: '√',  tex: ['sqrt'], unary: true },
-        { name: 'root',      ascii: null,   symbol: '√',  tex: ['root'], binary: true},
+        { name: 'sqrt',      ascii: null,   symbol: '√',  tex: ['sqrt'], cmd: Renderer.CmdType.Unary },
+        { name: 'root',      ascii: null,   symbol: '√',  tex: ['root'], cmd: Renderer.CmdType.Binary },
         { name: 'int',       ascii: null,   symbol: '∫',  tex: ['int'] },
         { name: 'oint',      ascii: null,   symbol: '∮',  tex: ['oint'] },
         { name: 'del',       ascii: null,   symbol: '∂',  tex: ['del', 'partial'] },
