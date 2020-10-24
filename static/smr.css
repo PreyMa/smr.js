@@ -95,7 +95,7 @@ m-math m-sum {
   display: flex;
 }
 
-m-math m-sum > div {
+m-math m-sum > span {
   align-self: center;
   line-height: 1;
 }
