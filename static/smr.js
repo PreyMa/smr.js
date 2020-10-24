@@ -83,8 +83,9 @@
           s(e).marginTop= `${minTop}px`;
 
         } else {
-          const scale= size/fontSize;
-          s(e).transform= s(sibling).transform= `scale(1, ${scale})`;
+          const scaleY= size/fontSize;
+          const scaleX= Math.min(1.1, Math.max(0.7, scaleY / 1.3));
+          s(e).transform= s(sibling).transform= `scale(${scaleX}, ${scaleY})`;
           s(e).marginTop= s(sibling).marginTop= `${minTop}px`;
         }
       });
