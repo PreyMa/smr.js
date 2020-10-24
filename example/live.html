@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Live Math</title>
+
+    <script>
+      // Store the smr styling function
+      window.smrConfig= {
+        docLoaded: fn => window.smrFunc= fn
+      }
+    </script>
+
+    <script src="../renderer/sm-renderer.js" charset="utf-8"></script>
+
+    <link rel="stylesheet" href="../static/smr.css">
+    <script src="../static/smr.js" charset="utf-8"></script>
+
+    <style>
+      .box {
+        border: 2px solid #84b5ff;
+        border-radius: 4px;
+        margin: 10px;
+        padding: 2px;
+      }
+      #output {
+        min-height: 110px;
+        overflow: hidden;
+      }
+      #htmlout, #console {
+        display: inline-block;
+        width: calc( 50% - 30px );
+        height: 70vh;
+        overflow: scroll;
+        white-space: pre;
+        font-family: "Courier New", "Consolas";
+      }
+      #math-inp {
+        width: calc( 100% - 80px );
+      }
+    </style>
+
+  </head>
+  <body>
+
+    <script type="text/javascript">
+      document.addEventListener('DOMContentLoaded', () => {
+        // Create renderer instance
+        const {Renderer, ExceptionType}= window.smrConfig;
+        const r= new Renderer();
+
+        // Init the text box with a sample formula
+        const inp= document.getElementById('math-inp');
+        inp.value= 'sum_(i=1)^n i^3=((n(n+1))/2)^2';
+
+        // Actual rendering code
+        const mathDiv= document.getElementById('output');
+        const htmlDiv= document.getElementById('htmlout');
+        const textDiv= document.getElementById('console');
+        function run() {
+          try {
+            textDiv.innerText= 'Rendering...\n';
+
+            // Parse the input
+            r.fromASCII( inp.value );
+
+            // Print html
+            const html= r.printHTML();
+            mathDiv.innerHTML= html;
+            htmlDiv.innerText= html;
+
+            // Run styl function manually
+            window.smrFunc();
+
+            textDiv.innerText+= 'Done rendering\n';
+
+          } catch( e ) {
+            // Show errors
+            if( e instanceof ExceptionType ) {
+              textDiv.innerText+= e.msg();
+            } else {
+              textDiv.innerText+= e;
+            }
+          }
+        }
+
+        // Add keydown and click events to the inputs
+        inp.addEventListener('keydown', e => {
+          if( e.keyCode === 13 ) {
+            run();
+          }
+        });
+
+        document.getElementById('doRender').addEventListener('click', () => {
+          run();
+        });
+
+        // Run once on startup
+        run();
+      });
+    </script>
+
+    <div>
+      <input id="math-inp" type="text"/>
+      <button id="doRender">Render</button>
+    </div>
+
+    <div class="box" id="output"></div>
+    <div class="box" id="htmlout"></div>
+    <div class="box" id="console"></div>
+
+  </body>
+</html>
