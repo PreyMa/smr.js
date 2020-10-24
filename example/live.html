@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+  <head>
+    <meta charset="utf-8">
+    <title>Live Math</title>
+
+    <script src="../renderer/sm-renderer.js" charset="utf-8"></script>
+
+    <link rel="stylesheet" href="../static/smr.css">
+    <script src="../static/smr.js" charset="utf-8"></script>
+
+  </head>
+  <body>
+
+    <script type="text/javascript">
+      const Renderer= smrConfig.Renderer;
+      const r= new Renderer();
+
+      r.fromASCII('sum_(i=1)^n i^3=((n(n+1))/2)^2 +root x y');
+    </script>
+
+  </body>
+</html>

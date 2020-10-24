@@ -38,6 +38,23 @@
     }
   }
 
+  class StringRef {
+    constructor( s= '' ) {
+      this.str= s;
+    }
+
+    get() { return this.str; }
+
+    append( s ) {
+      if( s instanceof StringRef ) {
+        this.str+= s.str;
+      } else {
+        this.str+= s;
+      }
+      return this;
+    }
+  }
+
   function escapeRegExp(text) {
     return text.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&');
   }
@@ -181,7 +198,7 @@
 
       isSym( symbol ) { return false; }
 
-      print() { throw Error('Abstract'); }
+      printHTML( str ) { throw Error('Abstract'); }
     }
 
     class MathLineElement extends MathElement {
@@ -189,9 +206,17 @@
         super();
       }
 
-      print() {
+      printHTML( str ) {
+        const tag= this.getTagName();
+
         // Print boilerplate
-        // Calls print body
+        str.append('<'+ tag+ '><span>');
+
+        // Print body
+        this.printBody( str );
+
+        str.append('</span></'+ tag+ '>');
+        str.append( '<m-spacer r="1"></m-spacer>' );
       }
     }
 
@@ -217,8 +242,16 @@
 
       isBinary() { return this.sym.cmd === Renderer.CmdType.Binary; }
 
-      printBody() {
-        // Called by parent
+      getTagName() {
+        if( this.sym.cmd === Renderer.CmdType.Function ) {
+          return 'm-nm';
+        }
+
+        return 'm-op';
+      }
+
+      printBody( str ) {
+        str.append( this.sym.glyph );
       }
     }
 
@@ -228,8 +261,12 @@
         this.text= s;
       }
 
-      printBody() {
-        // Called by parent
+      getTagName() {
+        return 'm-var';
+      }
+
+      printBody( str ) {
+        str.append( this.text );
       }
     }
 
@@ -239,8 +276,12 @@
         this.num= s;
       }
 
-      printBody() {
-        // Called by parent
+      getTagName() {
+        return 'm-nm';
+      }
+
+      printBody( str ) {
+        str.append( this.num );
       }
     }
 
@@ -318,7 +359,7 @@
 
         // S_S | S^S | S_S^S
         if( sub || sup ) {
-          return new MathIntExpression( e, sub, sup );
+          return MathIntExpression.create( e, sub, sup );
 
         // S
         } else {
@@ -354,6 +395,71 @@
               this.children.push( se );
             }
           }
+        }
+      }
+
+      printChildren( str ) {
+        this.children.forEach( c => c.printHTML( str ) );
+      }
+
+      printHTML( str ) {
+        str.append('<m-expr>');
+        this.printChildren( str );
+        str.append('</m-expr>');
+      }
+    }
+
+    class MathParenthesis extends MathExpression {
+      constructor( it ) {
+        super( it );
+
+        // Get id from renderer context
+        const d= Renderer._getContext().parsingData;
+        d.parIdCtr= d.parIdCtr || 0;
+
+        this.id= d.parIdCtr++;
+
+        // Try to load the close par element
+        this.closePar= it.isEnd() ? null : it.get();
+        it.next();
+
+        if( !(this.openPar instanceof MathSymbol) || (this.closePar && !(this.closePar instanceof MathSymbol)) ) {
+          throw Error('MathParenthesis open/close par element is not a symbol');
+        }
+      }
+
+      init( it ) {
+        this.openPar= it.get();
+        it.next();
+      }
+
+      shouldStop( it ) {
+        // Stop if a closing par element is found
+        const cur= it.get();
+        if( cur instanceof MathSymbol ) {
+          return cur.isParClose();
+        }
+
+        return false;
+      }
+
+      printHTML( str ) {
+        // Print opening par element with id if closing one exists
+        if( this.closePar ) {
+            str.append('<m-par open="'+ this.id+ '"><div>')
+        } else {
+            str.append('<m-par><div>')
+        }
+        this.openPar.printHTML( str );
+        str.append('</div></m-par>')
+
+        this.printChildren( str );
+
+        // Print closing par element
+        if( this.closePar ) {
+          str.append('<m-par close="'+ this.id+ '"><div>')
+          this.closePar.printHTML( str );
+          str.append('</div></m-par>')
         }
       }
     }
@@ -405,28 +511,9 @@
         // Don't wrap the radicand
         super( Renderer.defs.symbolTable.root, exponent, radicand, false );
       }
-    }
 
-    class MathParenthesis extends MathExpression {
-      constructor( it ) {
-        super( it );
+      printHTML( str ) {
 
-        this.closePar= it.get();
-        it.next();
-      }
-
-      init( it ) {
-        this.openPar= it.get();
-        it.next();
-      }
-
-      shouldStop( it ) {
-        const cur= it.get();
-        if( cur instanceof MathSymbol ) {
-          return cur.isParClose();
-        }
-
-        return false;
       }
     }
 
@@ -437,6 +524,72 @@
         this.sub= this.wrapArg(sub);
         this.sup= this.wrapArg(sup);
       }
+
+      static create( e, sub, sup ) {
+        const Symbols= Renderer.defs.symbolTable;
+
+        if( e instanceof MathSymbol ) {
+          switch( e.sym ) {
+            case Symbols.sum:
+            case Symbols.prod:
+            case Symbols.int:
+              return new MathSumExpression( e, sub, sup );
+
+            default:
+              break;
+          }
+        }
+
+        return new MathIntExpression( e, sub, sup );
+      }
+
+      printSub( str ) {
+        str.append('<m-sub>');
+        this.sub.printHTML( str );
+        str.append('</m-sub>');
+      }
+
+      printSup( str ) {
+        str.append('<m-sup><div>');
+        this.sup.printHTML( str );
+        str.append('</div></m-sup>');
+      }
+
+      printHTML( str ) {
+        this.exp.printHTML( str );
+
+        if( this.sub ) {
+          this.printSub( str );
+        } else {
+          str.append('<m-spacer r="1"></m-spacer>');
+        }
+
+        if( this.sup ) {
+          this.printSup( str );
+        } else {
+          str.append('<m-spacer r="2"></m-spacer>');
+        }
+      }
+    }
+
+    class MathSumExpression extends MathIntExpression {
+      constructor( e, sub, sup ) {
+        super( e, sub, sup );
+      }
+
+      printSub( str ) {
+        // Print sums lower bound
+        str.append('<m-lbnd><div>');
+        this.sub.printHTML( str );
+        str.append('</div></m-lbnd>');
+      }
+
+      printSup( str ) {
+        // Print sums upper bound
+        str.append('<m-ubnd>');
+        this.sup.printHTML( str );
+        str.append('</m-ubnd>');
+      }
     }
 
     class MathFraction extends MathElement {
@@ -444,6 +597,20 @@
         super();
         this.num=   this.wrapArg(num);
         this.denom= this.wrapArg(denom);
+      }
+
+      printHTML( str ) {
+        str.append('<m-num><div>');
+        if( this.num ) {
+          this.num.printHTML( str );
+        }
+        str.append('</div></m-num>');
+
+        str.append('<m-denom>');
+        if( this.denom ) {
+          this.denom.printHTML( str );
+        }
+        str.append('</m-denom>');
       }
     }
 
@@ -454,19 +621,22 @@
     */
     class Renderer {
       constructor() {
-        Renderer.moduleInit();
+        Renderer._moduleInit();
+
+        this.root= null;
+        this.parsingData= {};
       }
 
-      static moduleInit() {
+      static _moduleInit() {
         if( !Renderer.hasInit ) {
-          Renderer.initSymbolTable();
-          Renderer.initRegex();
+          Renderer._initSymbolTable();
+          Renderer._initRegex();
 
           Renderer.hasInit= true;
         }
       }
 
-      static initSymbolTable() {
+      static _initSymbolTable() {
         const symbols= Renderer.defs.symbols;
 
         // Set default flags
@@ -497,7 +667,7 @@
         });
       }
 
-      static initRegex() {
+      static _initRegex() {
         const symbols= Renderer.defs.symbols;
 
         // Create regex for symbols as ascii and tex
@@ -512,6 +682,14 @@
         large+= `(?<str2>\\w)`;
 
         Renderer.tokenize= new ParserRegex( large ); console.log( large );
+      }
+
+      static _getContext() {
+        return Renderer.activeContext;
+      }
+
+      _setActive( v= true ) {
+        Renderer.activeContext= v ? this : null;
       }
 
       _tokenize( source ) {
@@ -559,6 +737,10 @@
       fromASCII( source ) {
         //(\*\*\*|\*\*|\*|\/\/|\/_\\|\/_|\|__|__\||\|~|~\||\\\\|\-\:|\+\-|\|\>\<|\>\<\||\|\>\<\||\/|\=|\(|\)|\+|\-|\_|@|o\+|o\.|\^\^\^|\^\^|\^|O\/|\:\.|\:\'|\|\.\.\.\|)|(\"[^"]*\")|(\d+)|(\w+?(?=(_|ox|times)))|(ox|times)|(\w+)
 
+        this._setActive();
+
+        this.parsingData= {};
+
         // Early return
         if( typeof source !== 'string' || !source.length ) {
           return;
@@ -567,13 +749,30 @@
         const tokens= this._tokenize( source );
         const it= new ArrayIterator( tokens );
 
-        const root= new MathExpression( it );
+        this.root= new MathExpression( it );
 
         console.log( tokens );
-        console.log( root );
+        console.log( this.root );
+
+        this._setActive( false );
+      }
+
+      printHTML() {
+        this._setActive();
+
+        const str= new StringRef();
+
+        str.append('<m-math>');
+        root.printHTML( str );
+        str.append('</m-math>');
+
+        this._setActive( false );
+
+        return str.get();
       }
     }
 
+    Renderer.activeContext= null;
     Renderer.hasInit= false;
     Renderer.ParType= {
       None:  0,
@@ -583,7 +782,8 @@
     Renderer.CmdType= {
       None: 0,
       Unary: 1,
-      Binary: 2
+      Binary: 2,
+      Function: 3
     };
 
     Renderer.defs= {
