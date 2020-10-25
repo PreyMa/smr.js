@@ -226,7 +226,17 @@
         str.append('</span></'+ tag+ '>');
 
         if( addSpacer ) {
-          str.append( '<m-spacer r="1"></m-spacer>' );
+          // Add spacer without any root stem lines as single line
+          const lev= Renderer._getContext()._getCurExp().rootLevel;
+          if( !lev ) {
+            return str.append( '<m-spacer r="1"></m-spacer>' );
+          }
+
+          // Add spacer with root stem lines
+          str.append( '<m-spacer r="1">' );
+          str.append( '<m-rtstem>'.repeat(lev) );
+          str.append( '</m-rtstem>'.repeat(lev) );
+          str.append( '</m-spacer>' );
         }
       }
     }
@@ -301,6 +311,7 @@
         super();
 
         this.children= [];
+        this.rootLevel= 0;
 
         if( it instanceof MathExpression ) {
           this.children= it.children;
@@ -417,9 +428,14 @@
       }
 
       printHTML( str ) {
+        const ctx= Renderer._getContext();
+        ctx._pushExp( this );
+
         str.append('<m-expr>');
         this.printChildren( str );
         str.append('</m-expr>');
+
+        ctx._popExp();
       }
     }
 
@@ -532,13 +548,34 @@
       constructor( exponent, radicand ) {
         // Don't wrap the radicand
         super( Renderer.defs.symbolTable.root, exponent, radicand, false );
+
+        // Square root by default
+        if( !this.argA ) {
+          this.argA= this.wrapArg( new MathNumber('2') );
+        }
       }
 
       printHTML( str ) {
-        str.append('<m-op><span>');
-        str.append( this.sym.glyph );
-        str.append('</span></m-op>');
-        str.append( '<m-spacer r="1"></m-spacer>' );
+        // Print exponent as leading sup exp
+        MathIntExpression.printSupElem( this.argA, str );
+
+        // Print self as MathSymbol with custom tag name
+        this.printWithTagName( str, 'm-rt' );
+
+        // Increase root level of the current expression
+        const parent= Renderer._getContext()._getCurExp();
+        parent.rootLevel++;
+
+        // Only print children if radicant is paranthesis
+        if( this.argB instanceof MathParenthesis ) {
+          this.argB.children.forEach( c => {
+            c.printHTML( str );
+          });
+        } else {
+          this.argB.printHTML( str );
+        }
+
+        parent.rootLevel--;
       }
     }
 
@@ -568,6 +605,27 @@
         return new MathIntExpression( e, sub, sup );
       }
 
+      static printSupElem( e, str, addSpacer= true, lines= [null, null] ) {
+        // Print root stem
+        const lev= Renderer._getContext()._getCurExp().rootLevel;
+        str.append( '<m-rtstem>'.repeat(lev) );
+
+        // Print element with provided or default wrapper element
+        str.append(lines[0] || '<m-sup><div>');
+        if( e ) {
+          e.printHTML( str );
+        }
+        str.append(lines[1] || '</div></m-sup>');
+
+        // Close root stem
+        str.append( '</m-rtstem>'.repeat(lev) );
+
+        // Add optional spacer
+        if( addSpacer ) {
+          str.append('<m-spacer r="2"></m-spacer>');
+        }
+      }
+
       printExp( str ) {
         this.exp.printHTML( str );
       }
@@ -579,20 +637,21 @@
       }
 
       printSup( str ) {
-        str.append('<m-sup><div>');
-        this.sup.printHTML( str );
-        str.append('</div></m-sup>');
+        // Add no spacer by default
+        MathIntExpression.printSupElem( this.sup, str, false );
       }
 
       printHTML( str ) {
         this.printExp( str );
 
+        // Print sub exp or a spacer instead
         if( this.sub ) {
           this.printSub( str );
         } else {
           str.append('<m-spacer r="2"></m-spacer>');
         }
 
+        // Print sup exp or spacer
         if( this.sup ) {
           this.printSup( str );
         } else {
@@ -619,9 +678,7 @@
 
       printSup( str ) {
         // Print sums upper bound
-        str.append('<m-ubnd>');
-        this.sup.printHTML( str );
-        str.append('</m-ubnd>');
+        MathIntExpression.printSupElem( this.sup, str, false, ['<m-ubnd>', '</m-ubnd>'] );
       }
     }
 
@@ -633,12 +690,10 @@
       }
 
       printHTML( str ) {
-        str.append('<m-num><div>');
-        if( this.num ) {
-          this.num.printHTML( str );
-        }
-        str.append('</div></m-num>');
+        // Print numerator as sup element
+        MathIntExpression.printSupElem( this.num, str, false, ['<m-num><div>', '</div></m-num>'] );
 
+        // Print denominator
         str.append('<m-denom>');
         if( this.denom ) {
           this.denom.printHTML( str );
@@ -658,6 +713,7 @@
 
         this.root= null;
         this.parsingData= {};
+        this.expStack= [];
       }
 
       static _moduleInit() {
@@ -723,6 +779,20 @@
 
       _setActive( v= true ) {
         Renderer.activeContext= v ? this : null;
+      }
+
+      _pushExp( e ) {
+        this.expStack.push( e );
+      }
+
+      _popExp() {
+        this.expStack.pop();
+      }
+
+      _getCurExp() {
+        // Get top of expression stack
+        const len= this.expStack.length;
+        return len ? this.expStack[ len -1 ] : null;
       }
 
       _tokenize( source ) {
@@ -792,6 +862,8 @@
 
       printHTML() {
         this._setActive();
+
+        this.expStack.length= 0;
 
         const str= new StringRef();
 

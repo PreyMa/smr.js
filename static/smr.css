@@ -22,17 +22,17 @@ m-math m-expr {
   position: relative;
 }
 
-m-math m-op, m-math m-var, m-nm {
+m-math m-op, m-math m-var, m-nm, m-rt {
   grid-row: 2;
   height: 0.6em;
 }
 
-m-math m-op > span, m-math m-var > span, m-math m-nm > span {
+m-math m-op > span, m-math m-var > span, m-math m-nm > span, m-math m-rt > span {
   position: relative;
   top: -0.4em;
 }
 
-m-math m-op {
+m-math m-op, m-math m-rt {
   padding: 0 0.1em;
 }
 
@@ -45,6 +45,11 @@ m-math m-nm {
 
 m-math m-var {
   font-style: italic;
+}
+
+m-math m-rt > span {
+  /* pull the exponent closer to the root glyph */
+  margin-left: -0.3em;
 }
 
 m-math m-ubnd > m-expr {
@@ -98,4 +103,15 @@ m-math m-sum {
 m-math m-sum > span {
   align-self: center;
   line-height: 1;
+}
+
+m-math m-rtstem {
+  display: block;
+  border-top: 1px solid black;
+  margin-top: 5px;
+}
+
+m-math m-expr > m-rtstem {
+  grid-row: 1;
+  display: grid;
 }
