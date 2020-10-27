@@ -49,7 +49,7 @@
       if( s instanceof StringRef ) {
         this.str+= s.str;
       } else {
-        this.str+= s+ '\n';
+        this.str+= s+ (s.length ? '\n' : '');
       }
       return this;
     }
@@ -182,8 +182,9 @@
     */
 
     /*
-    *
-    *
+    * Math Element Class
+    * Node of a math markup tree. Represents a section in a mathematical
+    * formula. Implements parsing and printing.
     */
     class MathElement {
       constructor() {}
@@ -203,6 +204,22 @@
       isSym( symbol ) { return false; }
 
       printHTML( str ) { throw Error('Abstract'); }
+
+      static wrapRoot( str, func= null, gridFull= false ) {
+        const lev= Renderer._getContext()._getCurExp().rootLevel;
+
+        if( gridFull ) {
+          str.append( '<m-rtstem r="2">'.repeat(lev) );
+        } else {
+          str.append( '<m-rtstem>'.repeat(lev) );
+        }
+
+        if( func ) {
+          func();
+        }
+
+        str.append( '</m-rtstem>'.repeat(lev) );
+      }
     }
 
     class MathLineElement extends MathElement {
@@ -226,16 +243,9 @@
         str.append('</span></'+ tag+ '>');
 
         if( addSpacer ) {
-          // Add spacer without any root stem lines as single line
-          const lev= Renderer._getContext()._getCurExp().rootLevel;
-          if( !lev ) {
-            return str.append( '<m-spacer r="1"></m-spacer>' );
-          }
-
           // Add spacer with root stem lines
           str.append( '<m-spacer r="1">' );
-          str.append( '<m-rtstem>'.repeat(lev) );
-          str.append( '</m-rtstem>'.repeat(lev) );
+          MathElement.wrapRoot( str );
           str.append( '</m-spacer>' );
         }
       }
@@ -474,22 +484,27 @@
       }
 
       printHTML( str ) {
-        // Print opening par element with id if closing one exists
-        if( this.closePar ) {
-            str.append('<m-par open="'+ this.id+ '"><div>')
-        } else {
-            str.append('<m-par><div>')
-        }
-        str.append( this.openPar.sym.glyph );
-        str.append('</div></m-par>')
+        MathElement.wrapRoot( str, () => {
+          // Print opening par element with id if closing one exists
+          if( this.closePar ) {
+              str.append('<m-par open="'+ this.id+ '"><div>')
+          } else {
+              str.append('<m-par><div>')
+          }
+
+          str.append( this.openPar.sym.glyph );
+          str.append('</div></m-par>');
+        }, true);
 
         this.printChildren( str );
 
         // Print closing par element
         if( this.closePar ) {
-          str.append('<m-par close="'+ this.id+ '"><div>')
-          str.append( this.closePar.sym.glyph );
-          str.append('</div></m-par>')
+          MathElement.wrapRoot( str, () => {
+            str.append('<m-par close="'+ this.id+ '"><div>')
+            str.append( this.closePar.sym.glyph );
+            str.append('</div></m-par>')
+          }, true);
         }
       }
     }
@@ -607,18 +622,14 @@
 
       static printSupElem( e, str, addSpacer= true, lines= [null, null] ) {
         // Print root stem
-        const lev= Renderer._getContext()._getCurExp().rootLevel;
-        str.append( '<m-rtstem>'.repeat(lev) );
-
-        // Print element with provided or default wrapper element
-        str.append(lines[0] || '<m-sup><div>');
-        if( e ) {
-          e.printHTML( str );
-        }
-        str.append(lines[1] || '</div></m-sup>');
-
-        // Close root stem
-        str.append( '</m-rtstem>'.repeat(lev) );
+        MathElement.wrapRoot( str, () => {
+          // Print element with provided or default wrapper element
+          str.append(lines[0] || '<m-sup><div>');
+          if( e ) {
+            e.printHTML( str );
+          }
+          str.append(lines[1] || '</div></m-sup>');
+        });
 
         // Add optional spacer
         if( addSpacer ) {
@@ -704,8 +715,10 @@
 
 
     /*
-    *
-    *
+    * Renderer Class
+    * Converts markup source into html
+    * The instance can be thrown away, as any initialization will be done once
+    * globally.
     */
     class Renderer {
       constructor() {

@@ -115,3 +115,7 @@ m-math m-expr > m-rtstem {
   grid-row: 1;
   display: grid;
 }
+
+m-math m-rtstem[r="2"] {
+  grid-row: 1/3;
+}
