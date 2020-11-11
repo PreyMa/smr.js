@@ -206,13 +206,22 @@
       printHTML( str ) { throw Error('Abstract'); }
 
       static wrapRoot( str, func= null, gridFull= false ) {
-        const lev= Renderer._getContext()._getCurExp().rootLevel;
+        const exp= Renderer._getContext()._getCurExp();
+        let lev= exp.rootLevel;
 
-        if( gridFull ) {
-          str.append( '<m-rtstem r="2">'.repeat(lev) );
-        } else {
-          str.append( '<m-rtstem>'.repeat(lev) );
+        // Additional attribute to span both grid rows
+        const openTag= gridFull ? '<m-rtstem r="2"' : '<m-rtstem';
+
+        // Additional attribute for the first opentag of the first root stem element
+        let topLevel= '';
+        if( lev && !exp.rootStemHasElements ) {
+          exp.rootStemHasElements= true;
+          str.append( openTag+ ' start>' );
+          lev--;
         }
+
+        // All remaining nested root stems
+        str.append( (openTag+ '>').repeat(lev) );
 
         if( func ) {
           func();
@@ -322,6 +331,7 @@
 
         this.children= [];
         this.rootLevel= 0;
+        this.rootStemHasElements= false;
 
         if( it instanceof MathExpression ) {
           this.children= it.children;
@@ -590,7 +600,9 @@
           this.argB.printHTML( str );
         }
 
-        parent.rootLevel--;
+        if( --parent.rootLevel === 0 ) {
+          parent.rootStemHasElements= false;
+        }
       }
     }
 
