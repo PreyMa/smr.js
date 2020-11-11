@@ -74,12 +74,18 @@ m-math m-num, m-math m-denom {
   font-size: 70%;
 }
 
+m-math m-denom > m-expr {
+  display: inline-grid;
+}
+
 m-math m-num, m-math m-sup, m-math m-lbnd {
   display: flex;
 }
 
 m-math m-num > div, m-math m-sup > div, m-math m-lbnd > div {
   align-self: flex-end;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 m-math m-num {
@@ -106,14 +112,13 @@ m-math m-sum > span {
 }
 
 m-math m-rtstem {
-  display: block;
+  display: grid;
   border-top: 1px solid black;
   margin-top: 5px;
 }
 
 m-math m-expr > m-rtstem {
   grid-row: 1;
-  display: grid;
 }
 
 m-math m-rtstem[r="2"] {
