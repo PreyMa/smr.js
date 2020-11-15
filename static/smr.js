@@ -1,4 +1,24 @@
 (function() {
+  "use strict";
+
+  function getTagName( elem ) {
+    return elem && elem.tagName ? elem.tagName.toLowerCase() : null;
+  }
+
+  function getStemChild( e ) {
+    let depth= 0;
+    while( getTagName( e ) === 'm-rtstem' ) {
+      depth++;
+      e= e.firstElementChild;
+    }
+
+    return { child: e, depth };
+  }
+
+  function getStyleFontSize( elem ) {
+    const style= window.getComputedStyle( elem );
+    return parseFloat(style.fontSize.slice(0, -2));
+  }
 
   // Setup defaults
   let config= Object.assign({
@@ -12,13 +32,124 @@
     const maths= config.rootElement.querySelectorAll('m-math');
     maths.forEach( m => {
 
+      // Find all root stem starts
+      let rootStemMargin= 0;
+      const stemStarts= m.querySelectorAll('m-rtstem[start]');
+
+      // Detect the top margin of root stems
+      if( stemStarts.length ) {
+        const style= window.getComputedStyle( stemStarts[0] );
+        rootStemMargin= parseFloat(style.marginTop.slice(0, -2));
+      }
+
+      // Iterate all root stems
+      stemStarts.forEach( e => {
+        if( getTagName( e.parentNode ) !== 'm-expr' ) {
+          e= e.parentNode;
+        }
+        const parent= e.parentNode;
+
+        // Get first root symbol element and add it to the array
+        let rootArr= [];
+        let rootElem= e;
+        while( rootElem && (getTagName(rootElem) !== 'm-rt')) {
+          rootElem= rootElem.previousSibling;
+        }
+
+        if( rootElem ) {
+          rootArr.push({rootElem, depth: 0});
+        }
+
+        // Iterate over all elements until the end of the stem is reached
+        let stemArr= [];
+        let cur= e, minTop= Number.POSITIVE_INFINITY, curRootDepth= 0, maxRootDepth= 0;
+        iterateStems: while( cur ) {
+          switch( getTagName( cur ) ) {
+            case 'm-rt':
+                rootArr.push({rootElem: cur, depth: curRootDepth});
+                // Fall through!
+
+            case 'm-var':
+            case 'm-op':
+            case 'm-nm':
+            case 'm-sub': // ?
+            case 'm-lbnd':
+            case 'm-denom': // ?
+              minTop= Math.min(minTop, cur.firstElementChild.offsetTop);
+              break;
+
+            case 'm-spacer':
+              // Only check upper spacers
+              if( cur.getAttribute('r') === '1' ) {
+                // Check if it has a stem
+                const child= cur.firstElementChild;
+                if( getTagName( child ) === 'm-rtstem' ) {
+                  // Count stem children
+                  const {depth}= getStemChild( child );
+                  curRootDepth= depth;
+
+                  stemArr.push({e: cur, spacer: true});
+
+                } else {
+                  // End loop
+                  break iterateStems;
+                }
+              }
+              break;
+
+            case 'm-rtstem':
+              // Count stem children
+              const {child, depth}= getStemChild( cur );
+              curRootDepth= depth;
+
+              // Ignore position of sum and parenthesis elements
+              const childTag= getTagName( child );
+              if( childTag !== 'm-par' && childTag !== 'm-sum' ) {
+                minTop= Math.min(minTop, child.firstElementChild.offsetTop);
+              }
+              stemArr.push({e: cur, spacer: false});
+              break;
+
+            case 'm-sup':
+            case 'm-ubnd':
+            case 'm-num':
+            case 'm-par':
+            case 'm-sum':
+              // End loop
+              break iterateStems;
+
+            default:
+              break;
+          }
+
+          maxRootDepth= Math.max(maxRootDepth, curRootDepth);
+          cur= cur.nextSibling;
+        }
+
+        // Set margin of all stem elements
+        const offset= minTop- maxRootDepth * rootStemMargin;
+        stemArr.forEach( stem => {
+          stem.e.style.marginTop= (stem.spacer ? offset : offset+ rootStemMargin)+ 'px';
+        });
+
+        // Scale all root symbol elements
+        rootArr.forEach( rt => {
+          const elem= rt.rootElem.firstElementChild;
+          const fontSize= getStyleFontSize( elem );
+          const top= elem.offsetTop;
+          const diff= top- minTop;
+          const margins= maxRootDepth- rt.depth- 1;
+          const scaleY= (fontSize+ diff+ margins*rootStemMargin) / fontSize;
+          const scaleX= Math.max(1, scaleY* 0.8);
+          elem.style.transform= `scale(${scaleX}, ${scaleY})`;
+        });
+      });
+
       // Find all open parenthesis and sum elements
       const openPars= m.querySelectorAll('m-par[open], m-sum');
       openPars.forEach( e => {
-      	const isSum= e.tagName.toLowerCase() === 'm-sum';
+      	const isSum= getTagName( e ) === 'm-sum';
       	const parent= e.parentNode;
-
-        const style= window.getComputedStyle( parent );
 
         // Get id of closing parenthesis sibling
         const id= e.getAttribute('open');
@@ -31,37 +162,35 @@
           	break;
           }
 
-          let top= minTop, bottom= maxBottom, c;
-          if( cur.tagName ) {
-          	switch( cur.tagName.toLowerCase() ) {
-            	case 'm-var':
-              case 'm-op':
-              case 'm-nm':
-              case 'm-sub': // ?
-              case 'm-sup':
-              case 'm-lbnd':
-              case 'm-ubnd':
-              case 'm-num':
-              case 'm-denom': // ?
-              	d= cur.firstElementChild;
-                top= d.offsetTop;
-                bottom= d.offsetTop+ d.clientHeight;
-              	break;
+          let top= minTop, bottom= maxBottom, d;
+          switch( getTagName( cur ) ) {
+            case 'm-var':
+            case 'm-op':
+            case 'm-nm':
+            case 'm-sub': // ?
+            case 'm-sup':
+            case 'm-lbnd':
+            case 'm-ubnd':
+            case 'm-num':
+            case 'm-denom': // ?
+              d= cur.firstElementChild;
+              top= d.offsetTop;
+              bottom= d.offsetTop+ d.clientHeight;
+              break;
 
-              case 'm-par':
-              case 'm-sum':
-              	top= cur.offsetTop;
-                bottom= cur.offsetTop+ cur.clientHeight;
-              	break;
+            case 'm-par':
+            case 'm-sum':
+              top= cur.offsetTop;
+              bottom= cur.offsetTop+ cur.clientHeight;
+              break;
 
-              default:
-                break;
-            }
-
-            // Find highest and lowest points
-            maxBottom= Math.max(maxBottom, bottom);
-            minTop= Math.min(minTop, top);
+            default:
+              break;
           }
+
+          // Find highest and lowest points
+          maxBottom= Math.max(maxBottom, bottom);
+          minTop= Math.min(minTop, top);
         }
 
         // Reset minTop if the loop did not run at least once
@@ -69,7 +198,8 @@
           minTop= 0;
         }
 
-        const fontSize= parseFloat(style.fontSize.slice(0, -2))
+        // Get font size of the parent expression
+        const fontSize= getStyleFontSize( parent );
         const size= maxBottom- minTop;
 
         function s(q) {
