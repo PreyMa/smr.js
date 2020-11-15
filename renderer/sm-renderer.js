@@ -1,15 +1,15 @@
 (function() {
-  function DefaultException( str, i, m= null ) {
+  const DefaultException= (function() {
     class DefaultException {
-      constructor( str, i ) {
+      constructor( str, i, m= null ) {
         this.str= str;
         this.pos= i;
-        this.msg= m;
+        this.txt= m;
         this.err= Error();
       }
 
       msg() {
-        let s= this.msg+ '\n';
+        let s= this.txt+ '\n';
         s+= this.str+ '\n';
         return s+ ''.padStart(this.pos, '~') + '^';
       }
@@ -17,10 +17,20 @@
       print() {
         console.error( this.msg() );
       }
+
+      trace() {
+        const stack= this.err.stack;
+        return stack; // TODO: Remove the first two lines
+      }
     }
 
-    return new DefaultException( str, i );
-  }
+    const func= function( str, i, m ) {
+      return new DefaultException( str, i, m );
+    };
+    func._type= DefaultException;
+
+    return func;
+  })();
 
   class ArrayIterator {
     constructor( a ) {

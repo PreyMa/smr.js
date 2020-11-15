@@ -76,10 +76,11 @@
 
           } catch( e ) {
             // Show errors
-            if( e instanceof ExceptionType ) {
-              textDiv.innerText+= e.msg();
+            if( e instanceof ExceptionType._type ) {
+              textDiv.innerText+= e.msg()+ '\n';
+              textDiv.innerText+= e.trace();
             } else {
-              textDiv.innerText+= e;
+              textDiv.innerText+= e.stack;
             }
           }
         }
