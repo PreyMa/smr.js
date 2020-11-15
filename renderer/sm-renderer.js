@@ -592,7 +592,7 @@
 
       printHTML( str ) {
         // Print exponent as leading sup exp
-        MathIntExpression.printSupElem( this.argA, str );
+        MathIntExpression.printSupElem( this.argA, str, true, ['<m-sup root><div>', '</div></m-sup>'] );
 
         // Print self as MathSymbol with custom tag name
         this.printWithTagName( str, 'm-rt' );
