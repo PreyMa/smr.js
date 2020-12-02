@@ -253,6 +253,13 @@
       }
 
       printWithTagName( str, tag, addSpacer= true ) {
+        if( addSpacer ) {
+          // Add spacer with root stem lines
+          str.append( '<m-spacer r="1">' );
+          MathElement.wrapRoot( str );
+          str.append( '</m-spacer>' );
+        }
+
         // Print boilerplate
         str.append('<'+ tag+ '><span>');
 
@@ -260,13 +267,6 @@
         this.printBody( str );
 
         str.append('</span></'+ tag+ '>');
-
-        if( addSpacer ) {
-          // Add spacer with root stem lines
-          str.append( '<m-spacer r="1">' );
-          MathElement.wrapRoot( str );
-          str.append( '</m-spacer>' );
-        }
       }
     }
 
