@@ -253,6 +253,7 @@
       }
 
       printWithTagName( str, tag, addSpacer= true ) {
+        // Add spacer before element to begin root stem before element
         if( addSpacer ) {
           // Add spacer with root stem lines
           str.append( '<m-spacer r="1">' );

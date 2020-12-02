@@ -72,6 +72,9 @@
 
         if( rootElem ) {
           rootArr.push({rootElem, depth: 0});
+          
+          // Include the root symbol in the minTop calculation
+          e= rootElem;
         }
 
         // Iterate over all elements until the end of the stem is reached
